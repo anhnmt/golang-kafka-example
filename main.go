@@ -33,6 +33,10 @@ func main() {
 		log.Fatalf("gorm.Open(): %v", err)
 	}
 
+	// if err = db.Migrator().DropTable(&model.Sync{}); err != nil {
+	// 	log.Fatalf("db.DropTable(): %v", err)
+	// }
+
 	// Migrate the schema
 	if err = db.AutoMigrate(&model.Sync{}); err != nil {
 		log.Fatalf("db.AutoMigrate(): %v", err)
