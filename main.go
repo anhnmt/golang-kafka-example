@@ -50,11 +50,22 @@ func main() {
 }
 
 func produce(ctx context.Context) {
+	conn, err := kafka.DialLeader(ctx, "tcp", kafkaURL, topic, 0)
+	if err != nil {
+		panic(err)
+	}
+
+	// close the connection because we won't be using it
+	defer func(conn *kafka.Conn) {
+		if err = conn.Close(); err != nil {
+			log.Panicf("conn.Close(): %v", err)
+		}
+	}(conn)
+
 	writer := handler.NewProducer(kafkaURL, topic)
 
 	defer func(writer *kafka.Writer) {
-		err := writer.Close()
-		if err != nil {
+		if err = writer.Close(); err != nil {
 			log.Fatalf("writer.Close(): %v", err)
 		}
 	}(writer)
@@ -66,12 +77,13 @@ func produce(ctx context.Context) {
 			Key:   []byte(key),
 			Value: []byte(fmt.Sprint(uuid.New())),
 		}
-		err := writer.WriteMessages(ctx, msg)
-		if err != nil {
-			log.Fatalf("writer.WriteMessages(): %v", err)
+
+		if err = writer.WriteMessages(ctx, msg); err != nil {
+			log.Panicf("writer.WriteMessages(): %v", err)
 		} else {
 			fmt.Printf("produced at key:%v value:%v\n", key, string(msg.Value))
 		}
+
 		time.Sleep(5 * time.Second)
 	}
 }
@@ -90,12 +102,16 @@ func consume(ctx context.Context, db *gorm.DB) {
 	for {
 		m, err := reader.ReadMessage(ctx)
 		if err != nil {
-			log.Fatalf("reader.ReadMessage(): %v", err)
+			log.Panicf("reader.ReadMessage(): %v", err)
 		}
 
 		key := string(m.Key)
 		val := string(m.Value)
-		db.Create(&model.Sync{Key: key, Value: val})
 		fmt.Printf("message at topic:%v partition:%v offset:%v	%s = %s\n", m.Topic, m.Partition, m.Offset, key, val)
+
+		db.Create(&model.Sync{Key: key, Value: val})
+		if err = reader.CommitMessages(ctx, m); err != nil {
+			log.Panicf("failed to commit messages: %v", err)
+		}
 	}
 }
