@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
@@ -17,7 +16,7 @@ import (
 
 const (
 	kafkaURL = "localhost:19092"
-	topic    = "message-log"
+	topic    = "message-queue"
 	groupID  = "handler-group"
 )
 
@@ -45,8 +44,8 @@ func main() {
 	// produce messages in a new go routine, since
 	// both the produce and consume functions are
 	// blocking
-	go produce(ctx)
-	consume(ctx, db)
+	go consume(ctx, db)
+	produce(ctx)
 }
 
 func produce(ctx context.Context) {
@@ -62,14 +61,6 @@ func produce(ctx context.Context) {
 		}
 	}(conn)
 
-	writer := handler.NewProducer(kafkaURL, topic)
-
-	defer func(writer *kafka.Writer) {
-		if err = writer.Close(); err != nil {
-			log.Fatalf("writer.Close(): %v", err)
-		}
-	}(writer)
-
 	fmt.Println("start producing ... !!")
 	for i := 0; ; i++ {
 		key := fmt.Sprintf("Key-%d", i)
@@ -78,13 +69,13 @@ func produce(ctx context.Context) {
 			Value: []byte(fmt.Sprint(uuid.New())),
 		}
 
-		if err = writer.WriteMessages(ctx, msg); err != nil {
+		if _, err = conn.WriteMessages(msg); err != nil {
 			log.Panicf("writer.WriteMessages(): %v", err)
 		} else {
 			fmt.Printf("produced at key:%v value:%v\n", key, string(msg.Value))
 		}
 
-		time.Sleep(5 * time.Second)
+		// time.Sleep(1 * time.Second)
 	}
 }
 
