@@ -1,0 +1,38 @@
+# ./Dockerfile
+
+# first stage
+FROM golang:alpine as build_base
+
+# Set necessary environmet variables needed for our image
+ENV GO111MODULE=on \
+    CGO_ENABLED=0 \
+    GOOS=linux \
+    GOARCH=amd64
+
+# Set the Current Working Directory inside the container
+WORKDIR /app
+
+# Copy go mod and sum files
+COPY go.mod go.sum ./
+
+# Download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
+RUN go mod download
+
+# second stage
+FROM build_base as builder
+WORKDIR /app
+
+# Copy the source from the current directory to the Working Directory inside the container
+COPY . .
+
+RUN go build -a -tags musl -installsuffix cgo -ldflags '-extldflags "-static"' -o main ./cmd/producer
+
+# final stage
+FROM alpine:latest AS runner
+WORKDIR /root/
+
+# Copy the Pre-built binary file from the previous stage
+COPY --from=builder /app/main .
+
+# Command to run the executable
+ENTRYPOINT ["./main"]
