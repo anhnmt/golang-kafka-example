@@ -22,6 +22,8 @@ func main() {
 	log.Infof("Hello World")
 
 	brokers := strings.Split(viper.GetString("KAFKA_URL"), ",")
+	consumerGroup := viper.GetString("KAFKA_GROUP")
+	topic := viper.GetString("KAFKA_TOPIC")
 
 	s := &splitConsume{
 		consumers: make(map[tp]*pconsumer),
@@ -29,8 +31,8 @@ func main() {
 
 	cl, err := kgo.NewClient(
 		kgo.SeedBrokers(brokers...),
-		kgo.ConsumerGroup("base-project"),
-		kgo.ConsumeTopics("xdorro"),
+		kgo.ConsumerGroup(consumerGroup),
+		kgo.ConsumeTopics(topic),
 		kgo.WithLogger(kzerolog.New(&log.Logger)),
 		kgo.OnPartitionsAssigned(s.assigned),
 		kgo.OnPartitionsRevoked(s.lost),

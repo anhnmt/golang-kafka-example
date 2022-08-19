@@ -9,10 +9,13 @@ func defaultConfig() {
 	// APP
 	viper.SetDefault("APP_PORT", 8088)
 	viper.SetDefault("LOG_FILE_URL", "logs/data.log")
+
 	// DATABASE
 	viper.SetDefault("DB_URL", "mongodb://localhost:27017")
 	viper.SetDefault("DB_NAME", "kafka")
 
 	// KAFKA
 	viper.SetDefault("KAFKA_URL", "localhost:9092")
+	viper.SetDefault("KAFKA_GROUP", "base-project-group")
+	viper.SetDefault("KAFKA_TOPIC", "base_project")
 }

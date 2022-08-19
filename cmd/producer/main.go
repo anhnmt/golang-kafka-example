@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
+	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/twmb/franz-go/plugin/kzerolog"
 
@@ -21,10 +22,12 @@ func main() {
 	log.Infof("Hello World")
 
 	brokers := strings.Split(viper.GetString("KAFKA_URL"), ",")
+	topic := viper.GetString("KAFKA_TOPIC")
 
 	cl, err := kgo.NewClient(
 		kgo.SeedBrokers(brokers...),
-		kgo.AllowAutoTopicCreation(),
+		// kgo.AllowAutoTopicCreation(),
+		kgo.ConsumeTopics(topic),
 		kgo.RecordPartitioner(kgo.RoundRobinPartitioner()),
 		kgo.WithLogger(kzerolog.New(&log.Logger)),
 	)
@@ -45,13 +48,17 @@ func main() {
 		return
 	}
 
+	// create topic
+	admCl := kadm.NewClient(cl)
+	admCl.CreateTopics(context.Background(), 1, 1, nil, topic)
+
 	// 1.) Producing a message
 	// // All record production goes through Produce, and the callback can be used
 	// // to allow for synchronous or asynchronous production.
 
 	// for i := 0; i < 5000; i++ {
 	record := &kgo.Record{
-		Topic: "xdorro",
+		Topic: topic,
 		Value: []byte("bar"),
 	}
 
