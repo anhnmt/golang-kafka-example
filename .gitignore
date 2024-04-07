@@ -17,7 +17,6 @@ vendor/
 .idea/
 .run/
 
-.env
 /coverage.out
 /coverage.html
 /report.json
@@ -25,3 +24,7 @@ vendor/
 
 .logs/
 *.log.gz
+
+!.env.example
+*.env*
+config.yml
