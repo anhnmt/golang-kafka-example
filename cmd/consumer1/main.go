@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/twmb/franz-go/pkg/kgo"
@@ -35,32 +34,28 @@ func main() {
 
 	log.Info().Msg("Starting producer")
 
-	producer, err := kafka.NewProducer(ctx, cfg.Kafka)
+	consumer, err := kafka.NewConsumer(ctx, cfg.Kafka, "group1", cfg.Kafka.Topics)
 	if err != nil {
-		panic(fmt.Errorf("failed new kafka producer: %w", err))
+		panic(fmt.Errorf("failed new kafka: %w", err))
 	}
+
+	consumer.ProcessTask(func(cl *kgo.Client, recs kgo.FetchTopicPartition) error {
+		for _, rec := range recs.Records {
+			log.Info().
+				Str("value", string(rec.Value)).
+				Int64("offset", rec.Offset).
+				Msg("Message")
+
+			cl.MarkCommitRecords(rec)
+		}
+
+		return nil
+	})
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
-	go func() {
-		for {
-			str := fmt.Sprintf("hello world %s", time.Now().Format(time.RFC3339))
-			log.Info().Msg(str)
-
-			record := &kgo.Record{
-				Topic: "test1",
-				Value: []byte(str),
-			}
-
-			err = producer.SendRecord(ctx, record)
-			if err != nil {
-				return
-			}
-
-			time.Sleep(10 * time.Second)
-		}
-	}()
+	go consumer.PollRecords(ctx)
 
 	select {
 	case v := <-quit:
@@ -69,7 +64,7 @@ func main() {
 		log.Info().Any("done", done).Msg("ctx.Done")
 	}
 
-	producer.Close()
+	consumer.Close()
 
 	log.Info().Msg("Gracefully shutting down")
 }

@@ -1,0 +1,10 @@
+log:
+  format: text
+  level: info
+
+kafka:
+  debug: true
+  brokers: localhost:9092
+  max_poll_records: 1
+  topics:
+    - test1
